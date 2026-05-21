@@ -1,0 +1,28 @@
+{
+  "name": "mist-backend",
+  "version": "1.0.0",
+  "description": "Mist Product Management Backend API",
+  "type": "module",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "node --loader ts-node/esm server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "seed": "node --loader ts-node/esm seed.ts"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "mongoose": "^8.0.3",
+    "nodemailer": "^6.10.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.10.6",
+    "@types/nodemailer": "^6.4.14",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}
