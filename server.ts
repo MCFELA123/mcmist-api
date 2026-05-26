@@ -33,6 +33,7 @@ const productSchema = new mongoose.Schema(
  tag: { type: String, required: true },
  description: { type: String, required: true },
  image: { type: String, required: true },
+ images: { type: [String], default: [] },
  price: { type: Number, required: true },
  discount: { type: Number, default: 0 },
  isPopular: { type: Boolean, default: false },
@@ -55,8 +56,20 @@ const newsletterSchema = new mongoose.Schema(
  { timestamps: true }
 );
 
+const categorySchema = new mongoose.Schema(
+ {
+ id: { type: Number, required: true, unique: true },
+ name: { type: String, required: true, unique: true },
+ description: { type: String, default: '' },
+ icon: { type: String, default: '' },
+ color: { type: String, default: '#1a1a1a' },
+ },
+ { timestamps: true }
+);
+
 const Product = mongoose.model('Product', productSchema);
 const Newsletter = mongoose.model('Newsletter', newsletterSchema);
+const Category = mongoose.model('Category', categorySchema);
 
 // Authentication middleware
 const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
@@ -252,6 +265,112 @@ app.get('/api/health', async (req: Request, res: Response) => {
  res.json({ status: 'ok', productCount: count, database: 'connected' });
  } catch (error) {
  res.status(500).json({ status: 'error', database: 'disconnected' });
+ }
+});
+
+// ===== CATEGORY ROUTES =====
+
+// Get all categories
+app.get('/api/categories', async (req: Request, res: Response) => {
+ try {
+ const categories = await Category.find().sort({ id: 1 });
+ res.json(categories);
+ } catch (error) {
+ res.status(500).json({ error: 'Failed to fetch categories' });
+ }
+});
+
+// Get single category
+app.get('/api/categories/:id', async (req: Request, res: Response) => {
+ try {
+ const category = await Category.findOne({ id: parseInt(req.params.id) });
+ if (!category) {
+ return res.status(404).json({ error: 'Category not found' });
+ }
+ res.json(category);
+ } catch (error) {
+ res.status(500).json({ error: 'Failed to fetch category' });
+ }
+});
+
+// Create category (admin only)
+app.post('/api/categories', authMiddleware, async (req: Request, res: Response) => {
+ try {
+ const { name, description, icon, color } = req.body;
+
+ if (!name) {
+ return res.status(400).json({ error: 'Category name is required' });
+ }
+
+ const existingCategory = await Category.findOne({ name: name.toLowerCase() });
+ if (existingCategory) {
+ return res.status(400).json({ error: 'Category with this name already exists' });
+ }
+
+ const lastCategory = await Category.findOne().sort({ id: -1 });
+ const newId = lastCategory ? lastCategory.id + 1 : 1;
+
+ const newCategory = new Category({
+ id: newId,
+ name,
+ description: description || '',
+ icon: icon || '',
+ color: color || '#1a1a1a',
+ });
+
+ await newCategory.save();
+ res.status(201).json(newCategory);
+ } catch (error) {
+ res.status(400).json({ error: 'Failed to create category' });
+ }
+});
+
+// Update category (admin only)
+app.put('/api/categories/:id', authMiddleware, async (req: Request, res: Response) => {
+ try {
+ const { name, description, icon, color } = req.body;
+
+ const category = await Category.findOne({ id: parseInt(req.params.id) });
+ if (!category) {
+ return res.status(404).json({ error: 'Category not found' });
+ }
+
+ if (name && name !== category.name) {
+ const existingCategory = await Category.findOne({ name: name.toLowerCase() });
+ if (existingCategory) {
+ return res.status(400).json({ error: 'Another category with this name already exists' });
+ }
+ }
+
+ const updatedCategory = await Category.findOneAndUpdate(
+ { id: parseInt(req.params.id) },
+ { 
+ name: name || category.name,
+ description: description !== undefined ? description : category.description,
+ icon: icon !== undefined ? icon : category.icon,
+ color: color || category.color,
+ },
+ { new: true }
+ );
+
+ res.json(updatedCategory);
+ } catch (error) {
+ res.status(400).json({ error: 'Failed to update category' });
+ }
+});
+
+// Delete category (admin only)
+app.delete('/api/categories/:id', authMiddleware, async (req: Request, res: Response) => {
+ try {
+ const category = await Category.findOneAndDelete({ id: parseInt(req.params.id) });
+
+ if (!category) {
+ return res.status(404).json({ error: 'Category not found' });
+ }
+
+ res.json(category);
+ } catch (error) {
+ res.status(400).json({ error: 'Failed to delete category' });
  }
 });
 
