@@ -67,9 +67,18 @@ const categorySchema = new mongoose.Schema(
  { timestamps: true }
 );
 
+const typeSchema = new mongoose.Schema(
+ {
+ name: { type: String, required: true, unique: true },
+ variations: { type: [String], required: true, default: [] },
+ },
+ { timestamps: true }
+);
+
 const Product = mongoose.model('Product', productSchema);
 const Newsletter = mongoose.model('Newsletter', newsletterSchema);
 const Category = mongoose.model('Category', categorySchema);
+const Type = mongoose.model('Type', typeSchema);
 
 // Authentication middleware
 const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
@@ -371,6 +380,112 @@ app.delete('/api/categories/:id', authMiddleware, async (req: Request, res: Resp
  res.json(category);
  } catch (error) {
  res.status(400).json({ error: 'Failed to delete category' });
+ }
+});
+
+// ===== PRODUCT TYPE ROUTES =====
+
+// Get all types
+app.get('/api/types', async (req: Request, res: Response) => {
+ try {
+ const types = await Type.find().sort({ name: 1 });
+ res.json(types);
+ } catch (error) {
+ res.status(500).json({ error: 'Failed to fetch types' });
+ }
+});
+
+// Get single type
+app.get('/api/types/:name', async (req: Request, res: Response) => {
+ try {
+ const type = await Type.findOne({ name: req.params.name });
+ if (!type) {
+ return res.status(404).json({ error: 'Type not found' });
+ }
+ res.json(type);
+ } catch (error) {
+ res.status(500).json({ error: 'Failed to fetch type' });
+ }
+});
+
+// Create type (admin only)
+app.post('/api/types', authMiddleware, async (req: Request, res: Response) => {
+ try {
+ const { name, variations } = req.body;
+
+ if (!name || !name.trim()) {
+ return res.status(400).json({ error: 'Type name is required' });
+ }
+
+ if (!Array.isArray(variations) || variations.length === 0) {
+ return res.status(400).json({ error: 'At least one variation is required' });
+ }
+
+ const existingType = await Type.findOne({ name: name.trim() });
+ if (existingType) {
+ return res.status(400).json({ error: 'Type already exists' });
+ }
+
+ const newType = new Type({
+ name: name.trim(),
+ variations: variations.filter((v: string) => v.trim()).map((v: string) => v.trim()),
+ });
+
+ await newType.save();
+ res.status(201).json(newType);
+ } catch (error) {
+ res.status(400).json({ error: 'Failed to create type' });
+ }
+});
+
+// Update type (admin only)
+app.put('/api/types/:name', authMiddleware, async (req: Request, res: Response) => {
+ try {
+ const { name: newName, variations } = req.body;
+ const oldName = req.params.name;
+
+ const type = await Type.findOne({ name: oldName });
+ if (!type) {
+ return res.status(404).json({ error: 'Type not found' });
+ }
+
+ // Check if new name already exists (if changing name)
+ if (newName && newName !== oldName) {
+ const existingType = await Type.findOne({ name: newName.trim() });
+ if (existingType) {
+ return res.status(400).json({ error: 'Another type with this name already exists' });
+ }
+ }
+
+ const updatedType = await Type.findOneAndUpdate(
+ { name: oldName },
+ {
+ name: newName?.trim() || type.name,
+ variations: Array.isArray(variations) 
+  ? variations.filter((v: string) => v.trim()).map((v: string) => v.trim())
+  : type.variations,
+ },
+ { new: true }
+ );
+
+ res.json(updatedType);
+ } catch (error) {
+ res.status(400).json({ error: 'Failed to update type' });
+ }
+});
+
+// Delete type (admin only)
+app.delete('/api/types/:name', authMiddleware, async (req: Request, res: Response) => {
+ try {
+ const type = await Type.findOneAndDelete({ name: req.params.name });
+
+ if (!type) {
+ return res.status(404).json({ error: 'Type not found' });
+ }
+
+ res.json(type);
+ } catch (error) {
+ res.status(400).json({ error: 'Failed to delete type' });
  }
 });
 
