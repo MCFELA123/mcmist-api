@@ -868,37 +868,87 @@ app.get('/api/orders/:orderId', async (req: Request, res: Response) => {
 // CREATE new order
 app.post('/api/orders', async (req: Request, res: Response) => {
  try {
- const {
- orderId,
- customerName,
- customerEmail,
- customerPhone,
- items,
- totalPrice,
- paymentMethod = 'Thawani',
- } = req.body;
+     // Log full incoming body for debugging
+     console.log('📥 Incoming create order request body:', JSON.stringify(req.body));
 
- if (!orderId || !customerName || !customerEmail || !items || !totalPrice) {
- return res.status(400).json({ error: 'Missing required fields' });
- }
+     let {
+         orderId,
+         customerName,
+         customerEmail,
+         customerPhone,
+         items,
+         totalPrice,
+         paymentMethod = 'Thawani',
+     } = req.body as any;
 
- const newOrder = new Order({
- orderId,
- customerName,
- customerEmail,
- customerPhone,
- items,
- totalPrice,
- paymentMethod,
- paymentStatus: 'pending',
- deliveryStatus: 'processing',
- });
+     // Basic required fields check
+     if (!orderId || !customerName || !customerEmail || !items || totalPrice === undefined) {
+         console.log('❌ Missing required fields:', {
+             orderId: !!orderId,
+             customerName: !!customerName,
+             customerEmail: !!customerEmail,
+             items: !!items,
+             totalPrice: totalPrice !== undefined,
+         });
+         return res.status(400).json({ error: 'Missing required fields' });
+     }
 
- const savedOrder = await newOrder.save();
- res.status(201).json(savedOrder);
+     // Ensure items is an array and coerce numeric fields to numbers to satisfy mongoose schema
+     if (!Array.isArray(items) || items.length === 0) {
+         return res.status(400).json({ error: 'Items must be a non-empty array' });
+     }
+
+     const sanitizedItems = items.map((it: any, idx: number) => {
+         const productId = Number(it.productId);
+         const quantity = Number(it.quantity);
+         const price = Number(it.price);
+         if (Number.isNaN(productId) || Number.isNaN(quantity) || Number.isNaN(price)) {
+             throw new Error(`Invalid numeric field in items[${idx}]`);
+         }
+         return {
+             productId,
+             productName: String(it.productName || ''),
+             quantity,
+             price,
+             selectedVariation: it.selectedVariation || '',
+             selectedColor: it.selectedColor || '',
+         };
+     });
+
+     // Coerce totalPrice to number
+     totalPrice = Number(totalPrice);
+     if (Number.isNaN(totalPrice)) {
+         return res.status(400).json({ error: 'Invalid totalPrice' });
+     }
+
+     const newOrder = new Order({
+         orderId: String(orderId),
+         customerName: String(customerName),
+         customerEmail: String(customerEmail),
+         customerPhone: String(customerPhone || ''),
+         items: sanitizedItems,
+         totalPrice,
+         paymentMethod: String(paymentMethod),
+         paymentStatus: 'pending',
+         deliveryStatus: 'processing',
+     });
+
+     console.log('💾 Saving order to database (sanitized)...');
+     const savedOrder = await newOrder.save();
+     console.log('✅ Order created successfully:', savedOrder._id);
+     res.status(201).json(savedOrder);
  } catch (error) {
- console.error('Error creating order:', error);
- res.status(500).json({ error: 'Failed to create order' });
+     console.error('❌ Error creating order:', error instanceof Error ? error.message : error);
+     console.error('📍 Full error object:', error);
+
+     // Handle mongoose validation / duplicate key errors with clearer responses
+     // Duplicate key (e.g., orderId unique) has code 11000
+     // If error is an object with 'code' property, return 409
+     if (typeof (error as any)?.code === 'number' && (error as any).code === 11000) {
+         return res.status(409).json({ error: 'Duplicate orderId', details: (error as any).keyValue });
+     }
+
+     res.status(500).json({ error: 'Failed to create order', details: error instanceof Error ? error.message : 'Unknown error' });
  }
 });
 
