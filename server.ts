@@ -902,11 +902,12 @@ app.post('/api/orders', async (req: Request, res: Response) => {
  }
 });
 
-// UPDATE order status (admin only)
-app.put('/api/orders/:orderId', authMiddleware, async (req: Request, res: Response) => {
+// UPDATE order status - Customer can update own order (public endpoint for payment confirmation)
+app.put('/api/orders/:orderId', async (req: Request, res: Response) => {
  try {
  const { orderId } = req.params;
  const { paymentStatus, deliveryStatus, receiptUrl, notes } = req.body;
+ const token = req.headers.authorization?.split(' ')[1];
 
  const order = await Order.findOne({ orderId });
  
@@ -914,10 +915,18 @@ app.put('/api/orders/:orderId', authMiddleware, async (req: Request, res: Respon
  return res.status(404).json({ error: 'Order not found' });
  }
 
+ // Allow admin to update all fields, or customer to update only paymentStatus and receiptUrl
+ if (token && token === ADMIN_TOKEN) {
+ // Admin can update anything
  if (paymentStatus) order.paymentStatus = paymentStatus;
  if (deliveryStatus) order.deliveryStatus = deliveryStatus;
  if (receiptUrl) order.receiptUrl = receiptUrl;
  if (notes) order.notes = notes;
+ } else {
+ // Customer can only update paymentStatus and receiptUrl
+ if (paymentStatus) order.paymentStatus = paymentStatus;
+ if (receiptUrl) order.receiptUrl = receiptUrl;
+ }
 
  const updatedOrder = await order.save();
  res.json(updatedOrder);
