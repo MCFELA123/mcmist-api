@@ -22,6 +22,7 @@ const productSchema = new mongoose.Schema(
     colors: { type: [String], required: true },
     variations: { type: [String], required: true },
     accessories: { type: [Number], default: [] },
+    stock: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
@@ -47,6 +48,7 @@ const SEED_PRODUCTS = [
     colors: ['#000'],
     variations: ['0.5 L/min'],
     accessories: [20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
+    stock: 15,
   },
   {
     id: 2,
@@ -64,6 +66,7 @@ const SEED_PRODUCTS = [
     colors: ['#000'],
     variations: ['0.5 L/min'],
     accessories: [20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
+    stock: 8,
   },
   // ── Mini 70Bar Misting Systems (0.7 L/min) ──
   {
@@ -82,6 +85,7 @@ const SEED_PRODUCTS = [
     colors: ['#000'],
     variations: ['0.7 L/min'],
     accessories: [20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
+    stock: 12,
   },
   {
     id: 4,
@@ -99,6 +103,7 @@ const SEED_PRODUCTS = [
     colors: ['#000'],
     variations: ['0.7 L/min'],
     accessories: [20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
+    stock: 5,
   },
   // ── Commercial 70 Bar Misting System (1.0~2.0L/min) ──
   {
@@ -117,6 +122,7 @@ const SEED_PRODUCTS = [
     colors: ['#000'],
     variations: ['1.0 L/min'],
     accessories: [18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
+    stock: 20,
   },
   {
     id: 6,
@@ -134,6 +140,7 @@ const SEED_PRODUCTS = [
     colors: ['#000'],
     variations: ['1.5 L/min'],
     accessories: [18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
+    stock: 3,
   },
   {
     id: 7,
@@ -151,6 +158,7 @@ const SEED_PRODUCTS = [
     colors: ['#000'],
     variations: ['2.0 L/min'],
     accessories: [18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
+    stock: 0,
   },
   {
     id: 8,
@@ -168,6 +176,7 @@ const SEED_PRODUCTS = [
     colors: ['#000'],
     variations: ['3.0 L/min'],
     accessories: [18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
+    stock: 7,
   },
   // ── Big 70 Bar HP Misting System (4.0~7.0L/min) ──
   {
@@ -186,6 +195,7 @@ const SEED_PRODUCTS = [
     colors: ['#000'],
     variations: ['4.0 L/min'],
     accessories: [18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
+    stock: 18,
   },
   {
     id: 10,
@@ -203,6 +213,7 @@ const SEED_PRODUCTS = [
     colors: ['#000'],
     variations: ['5.0 L/min'],
     accessories: [18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
+    stock: 11,
   },
   {
     id: 11,
@@ -220,6 +231,7 @@ const SEED_PRODUCTS = [
     colors: ['#000'],
     variations: ['6.0 L/min'],
     accessories: [18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
+    stock: 6,
   },
   {
     id: 12,
@@ -237,6 +249,7 @@ const SEED_PRODUCTS = [
     colors: ['#000'],
     variations: ['7.0 L/min'],
     accessories: [18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
+    stock: 2,
   },
   // ── Low Pressure Misting System (1.5 L/min @ 15 Bar) ──
   {
@@ -255,6 +268,7 @@ const SEED_PRODUCTS = [
     colors: ['#3d3d3d'],
     variations: ['10 Bar', '20 Bar'],
     accessories: [20, 21, 22, 23, 24, 25, 26, 27, 28, 29],
+    stock: 25,
   },
   // ── Misting Umbrella & Misting column ──
   {
@@ -273,6 +287,7 @@ const SEED_PRODUCTS = [
     colors: ['#000', '#fff', '#3d3d3d'],
     variations: ['Standard', 'Deluxe'],
     accessories: [20, 21, 22, 23, 24, 25, 26],
+    stock: 9,
   },
   {
     id: 15,
@@ -290,6 +305,7 @@ const SEED_PRODUCTS = [
     colors: ['#000', '#fff'],
     variations: ['Standard', 'Tall'],
     accessories: [20, 21, 22, 23, 24, 25, 26],
+    stock: 14,
   },
   // ── Pump Units ──
   {
@@ -307,6 +323,7 @@ const SEED_PRODUCTS = [
     collection: 'Pump Units',
     colors: ['#000'],
     variations: ['60W', '120W'],
+    stock: 10,
   },
   {
     id: 17,
@@ -323,6 +340,7 @@ const SEED_PRODUCTS = [
     collection: 'Pump Units',
     colors: ['#000'],
     variations: ['50W', '80W'],
+    stock: 16,
   },
   // ── Power Supply & Timer ──
   {
@@ -340,6 +358,7 @@ const SEED_PRODUCTS = [
     collection: 'Power Supply',
     colors: ['#000'],
     variations: ['500W', '800W'],
+    stock: 22,
   },
   {
     id: 19,
@@ -356,6 +375,7 @@ const SEED_PRODUCTS = [
     collection: 'Power Supply',
     colors: ['#000'],
     variations: ['Standard'],
+    stock: 30,
   },
   // ── Nozzles ──
   {
@@ -373,6 +393,7 @@ const SEED_PRODUCTS = [
     collection: 'Nozzles',
     colors: ['#d4af37'],
     variations: ['Single', 'Pack of 5', 'Pack of 10'],
+    stock: 50,
   },
   {
     id: 21,
@@ -389,6 +410,7 @@ const SEED_PRODUCTS = [
     collection: 'Nozzles',
     colors: ['#c0c0c0'],
     variations: ['Single', 'Pack of 5'],
+    stock: 65,
   },
   {
     id: 22,
@@ -405,6 +427,7 @@ const SEED_PRODUCTS = [
     collection: 'Nozzles',
     colors: ['#000'],
     variations: ['Standard', 'Deluxe'],
+    stock: 28,
   },
   // ── Fittings ──
   {
@@ -422,6 +445,7 @@ const SEED_PRODUCTS = [
     collection: 'Fittings',
     colors: ['#d4af37'],
     variations: ['Single', 'Pack of 10'],
+    stock: 100,
   },
   {
     id: 24,
@@ -438,6 +462,7 @@ const SEED_PRODUCTS = [
     collection: 'Fittings',
     colors: ['#c0c0c0'],
     variations: ['1/2"', '3/4"'],
+    stock: 85,
   },
   {
     id: 25,
@@ -454,6 +479,7 @@ const SEED_PRODUCTS = [
     collection: 'Fittings',
     colors: ['#000'],
     variations: ['Single', 'Pair'],
+    stock: 42,
   },
   // ── Tubing/Pipes ──
   {
@@ -471,6 +497,7 @@ const SEED_PRODUCTS = [
     collection: 'Pipes',
     colors: ['#000'],
     variations: ['50m', '100m'],
+    stock: 35,
   },
   {
     id: 27,
@@ -487,6 +514,7 @@ const SEED_PRODUCTS = [
     collection: 'Pipes',
     colors: ['#c0c0c0'],
     variations: ['25m'],
+    stock: 19,
   },
   {
     id: 28,
@@ -503,6 +531,7 @@ const SEED_PRODUCTS = [
     collection: 'Pipes',
     colors: ['#000'],
     variations: ['30m'],
+    stock: 41,
   },
   // ── Filters & Protection ──
   {
@@ -520,6 +549,7 @@ const SEED_PRODUCTS = [
     collection: 'Filters & Protection',
     colors: ['#fff'],
     variations: ['Standard', 'Cartridge Extra'],
+    stock: 56,
   },
   {
     id: 30,
@@ -536,6 +566,7 @@ const SEED_PRODUCTS = [
     collection: 'Filters & Protection',
     colors: ['#fff'],
     variations: ['Standard', 'Industrial'],
+    stock: 31,
   },
   // ── Installation & Maintenance ──
   {
@@ -553,6 +584,7 @@ const SEED_PRODUCTS = [
     collection: 'Maintenance Kits',
     colors: ['#888'],
     variations: ['Standard', 'Professional'],
+    stock: 24,
   },
   {
     id: 32,
@@ -569,6 +601,7 @@ const SEED_PRODUCTS = [
     collection: 'Maintenance Kits',
     colors: ['#000'],
     variations: ['Standard'],
+    stock: 47,
   },
   // ── Solar Power Integration ──
   {
@@ -586,6 +619,7 @@ const SEED_PRODUCTS = [
     collection: 'Solar & Eco Systems',
     colors: ['#000'],
     variations: ['Standard'],
+    stock: 4,
   },
   {
     id: 34,
@@ -602,6 +636,7 @@ const SEED_PRODUCTS = [
     collection: 'Solar & Eco Systems',
     colors: ['#000'],
     variations: ['200W', '400W'],
+    stock: 8,
   },
   {
     id: 35,
@@ -618,6 +653,7 @@ const SEED_PRODUCTS = [
     collection: 'Solar & Eco Systems',
     colors: ['#000'],
     variations: ['100Ah'],
+    stock: 1,
   },
   // ── Bundles & Kits ──
   {
@@ -635,6 +671,7 @@ const SEED_PRODUCTS = [
     collection: 'Bundles',
     colors: ['#000'],
     variations: ['Standard', 'Premium'],
+    stock: 13,
   },
   {
     id: 37,
@@ -651,6 +688,7 @@ const SEED_PRODUCTS = [
     collection: 'Bundles',
     colors: ['#000'],
     variations: ['Standard'],
+    stock: 6,
   },
 ];
 

@@ -14,8 +14,9 @@ async function clearAndSeed() {
     await mongoose.connection.collection('products').deleteMany({});
     console.log('🗑️  Cleared all products');
     
-    // Now run the seed file
-    const seedModule = await import('./seed.ts');
+  // Now run the seed file
+  // Dynamic import should not include the .ts extension unless allowImportingTsExtensions is enabled
+  const seedModule = await import('./seed');
     console.log('✅ Seeding complete!');
     
   } catch (error) {

@@ -43,6 +43,7 @@ const productSchema = new mongoose.Schema(
  colors: { type: [String], required: true },
  variations: { type: [String], required: true },
  accessories: { type: [Number], default: [] },
+ stock: { type: Number, default: 0 },
  },
  { timestamps: true }
 );
