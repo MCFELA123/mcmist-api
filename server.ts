@@ -76,10 +76,37 @@ const typeSchema = new mongoose.Schema(
  { timestamps: true }
 );
 
+const orderSchema = new mongoose.Schema(
+ {
+ orderId: { type: String, required: true, unique: true },
+ customerName: { type: String, required: true },
+ customerEmail: { type: String, required: true },
+ customerPhone: { type: String, required: true },
+ items: [
+ {
+ productId: { type: Number, required: true },
+ productName: { type: String, required: true },
+ quantity: { type: Number, required: true, min: 1 },
+ price: { type: Number, required: true },
+ selectedVariation: { type: String, default: '' },
+ selectedColor: { type: String, default: '' },
+ }
+ ],
+ totalPrice: { type: Number, required: true },
+ paymentMethod: { type: String, enum: ['Thawani', 'Bank Transfer'], default: 'Thawani' },
+ paymentStatus: { type: String, enum: ['pending', 'completed', 'failed'], default: 'pending' },
+ deliveryStatus: { type: String, enum: ['processing', 'shipped', 'delivered', 'cancelled'], default: 'processing' },
+ receiptUrl: { type: String, default: '' },
+ notes: { type: String, default: '' },
+ },
+ { timestamps: true }
+);
+
 const Product = mongoose.model('Product', productSchema);
 const Newsletter = mongoose.model('Newsletter', newsletterSchema);
 const Category = mongoose.model('Category', categorySchema);
 const Type = mongoose.model('Type', typeSchema);
+const Order = mongoose.model('Order', orderSchema);
 
 // Authentication middleware
 const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
@@ -805,6 +832,115 @@ app.post('/api/paypal/capture-order', async (req: Request, res: Response) => {
  } catch (error) {
  console.error('Error capturing PayPal order:', error);
  res.status(500).json({ error: 'Failed to capture order' });
+ }
+});
+
+// ============ ORDERS ENDPOINTS ============
+
+// GET all orders (admin only)
+app.get('/api/orders', authMiddleware, async (req: Request, res: Response) => {
+ try {
+ const orders = await Order.find().sort({ createdAt: -1 });
+ res.json(orders);
+ } catch (error) {
+ console.error('Error fetching orders:', error);
+ res.status(500).json({ error: 'Failed to fetch orders' });
+ }
+});
+
+// GET single order by ID
+app.get('/api/orders/:orderId', async (req: Request, res: Response) => {
+ try {
+ const { orderId } = req.params;
+ const order = await Order.findOne({ orderId });
+ 
+ if (!order) {
+ return res.status(404).json({ error: 'Order not found' });
+ }
+ 
+ res.json(order);
+ } catch (error) {
+ console.error('Error fetching order:', error);
+ res.status(500).json({ error: 'Failed to fetch order' });
+ }
+});
+
+// CREATE new order
+app.post('/api/orders', async (req: Request, res: Response) => {
+ try {
+ const {
+ orderId,
+ customerName,
+ customerEmail,
+ customerPhone,
+ items,
+ totalPrice,
+ paymentMethod = 'Thawani',
+ } = req.body;
+
+ if (!orderId || !customerName || !customerEmail || !items || !totalPrice) {
+ return res.status(400).json({ error: 'Missing required fields' });
+ }
+
+ const newOrder = new Order({
+ orderId,
+ customerName,
+ customerEmail,
+ customerPhone,
+ items,
+ totalPrice,
+ paymentMethod,
+ paymentStatus: 'pending',
+ deliveryStatus: 'processing',
+ });
+
+ const savedOrder = await newOrder.save();
+ res.status(201).json(savedOrder);
+ } catch (error) {
+ console.error('Error creating order:', error);
+ res.status(500).json({ error: 'Failed to create order' });
+ }
+});
+
+// UPDATE order status (admin only)
+app.put('/api/orders/:orderId', authMiddleware, async (req: Request, res: Response) => {
+ try {
+ const { orderId } = req.params;
+ const { paymentStatus, deliveryStatus, receiptUrl, notes } = req.body;
+
+ const order = await Order.findOne({ orderId });
+ 
+ if (!order) {
+ return res.status(404).json({ error: 'Order not found' });
+ }
+
+ if (paymentStatus) order.paymentStatus = paymentStatus;
+ if (deliveryStatus) order.deliveryStatus = deliveryStatus;
+ if (receiptUrl) order.receiptUrl = receiptUrl;
+ if (notes) order.notes = notes;
+
+ const updatedOrder = await order.save();
+ res.json(updatedOrder);
+ } catch (error) {
+ console.error('Error updating order:', error);
+ res.status(500).json({ error: 'Failed to update order' });
+ }
+});
+
+// DELETE order (admin only)
+app.delete('/api/orders/:orderId', authMiddleware, async (req: Request, res: Response) => {
+ try {
+ const { orderId } = req.params;
+ const result = await Order.deleteOne({ orderId });
+
+ if (result.deletedCount === 0) {
+ return res.status(404).json({ error: 'Order not found' });
+ }
+
+ res.json({ success: true, message: 'Order deleted' });
+ } catch (error) {
+ console.error('Error deleting order:', error);
+ res.status(500).json({ error: 'Failed to delete order' });
  }
 });
 
