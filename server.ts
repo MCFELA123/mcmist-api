@@ -532,26 +532,26 @@ app.post('/api/types', authMiddleware, async (req: Request, res: Response) => {
 });
 
 // Update type (admin only)
-app.put('/api/types/:name', authMiddleware, async (req: Request, res: Response) => {
+app.put('/api/types/:id', authMiddleware, async (req: Request, res: Response) => {
  try {
  const { name: newName, variations, variationPrices } = req.body;
- const oldName = req.params.name;
+ const typeId = req.params.id;
 
- const type = await Type.findOne({ name: oldName });
+ const type = await Type.findById(typeId);
  if (!type) {
  return res.status(404).json({ error: 'Type not found' });
  }
 
  // Check if new name already exists (if changing name)
- if (newName && newName !== oldName) {
+ if (newName && newName !== type.name) {
  const existingType = await Type.findOne({ name: newName.trim() });
  if (existingType) {
  return res.status(400).json({ error: 'Another type with this name already exists' });
  }
  }
 
- const updatedType = await Type.findOneAndUpdate(
- { name: oldName },
+ const updatedType = await Type.findByIdAndUpdate(
+ typeId,
  {
  name: newName?.trim() || type.name,
  variations: Array.isArray(variations) 
@@ -565,6 +565,22 @@ app.put('/api/types/:name', authMiddleware, async (req: Request, res: Response) 
  res.json(updatedType);
  } catch (error) {
  res.status(400).json({ error: 'Failed to update type' });
+ }
+});
+
+// Delete type (admin only)
+app.delete('/api/types/:id', authMiddleware, async (req: Request, res: Response) => {
+ try {
+ const typeId = req.params.id;
+ const type = await Type.findByIdAndDelete(typeId);
+
+ if (!type) {
+ return res.status(404).json({ error: 'Type not found' });
+ }
+
+ res.json(type);
+ } catch (error) {
+ res.status(400).json({ error: 'Failed to delete type' });
  }
 });
 
