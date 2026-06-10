@@ -74,7 +74,12 @@ const typeSchema = new mongoose.Schema(
  {
  name: { type: String, required: true, unique: true },
  variations: { type: [String], required: true, default: [] },
- variationPrices: { type: Map, of: Number, default: {} },
+ variationPrices: [
+ {
+ variation: { type: String, required: true },
+ price: { type: Number, required: true }
+ }
+ ],
  },
  { timestamps: true }
 );
@@ -525,10 +530,15 @@ app.post('/api/types', authMiddleware, async (req: Request, res: Response) => {
  return res.status(400).json({ error: 'Type already exists' });
  }
 
+ // Convert variationPrices object to array format
+ const variationPricesArray = variationPrices && typeof variationPrices === 'object'
+ ? Object.entries(variationPrices).map(([variation, price]) => ({ variation, price: Number(price) }))
+ : [];
+
  const newType = new Type({
  name: name.trim(),
  variations: cleanedVariations,
- variationPrices: variationPrices || {},
+ variationPrices: variationPricesArray,
  });
 
  await newType.save();
@@ -573,12 +583,17 @@ app.put('/api/types/:id', authMiddleware, async (req: Request, res: Response) =>
  }
  }
 
+ // Convert variationPrices object to array format
+ const variationPricesArray = variationPrices && typeof variationPrices === 'object'
+ ? Object.entries(variationPrices).map(([variation, price]) => ({ variation, price: Number(price) }))
+ : [];
+
  const updatedType = await Type.findByIdAndUpdate(
  typeId,
  {
  name: newName.trim(),
  variations: cleanedVariations,
- variationPrices: variationPrices || {},
+ variationPrices: variationPricesArray,
  },
  { new: true }
  );
