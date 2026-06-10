@@ -41,7 +41,9 @@ const productSchema = new mongoose.Schema(
  type: { type: String, required: true },
  collection: { type: String, required: true },
  colors: { type: [String], required: true },
- variations: { type: [String], required: true },
+ variations: [
+   mongoose.Schema.Types.Mixed // Can be string or { name: string, price?: number }
+ ],
  accessories: { type: [Number], default: [] },
  stock: { type: Number, default: 0 },
  },
@@ -118,6 +120,47 @@ const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
  next();
 };
 
+// Helper function to validate and normalize variations
+const validateVariations = (variations: any[]): { valid: boolean; data?: any[]; error?: string } => {
+ if (!Array.isArray(variations)) {
+ return { valid: false, error: 'Variations must be an array' };
+ }
+
+ const normalizedVariations = variations.map((v, index) => {
+ // Allow both string and object formats
+ if (typeof v === 'string') {
+ return v;
+ }
+
+ if (typeof v === 'object' && v !== null && typeof v.name === 'string') {
+ const variation: any = { name: v.name };
+ 
+ // If price is provided, validate it
+ if (v.price !== undefined && v.price !== null) {
+ const price = parseFloat(v.price);
+ if (isNaN(price) || price < 0) {
+ return {
+ error: `Variation at index ${index}: price must be a positive number, got ${v.price}`,
+ };
+ }
+ variation.price = price;
+ }
+ 
+ return variation;
+ }
+
+ return { error: `Variation at index ${index}: must be a string or object with 'name' property` };
+ });
+
+ // Check for errors
+ const errorVariation = normalizedVariations.find(v => v && v.error);
+ if (errorVariation) {
+ return { valid: false, error: errorVariation.error };
+ }
+
+ return { valid: true, data: normalizedVariations };
+};
+
 // Routes
 
 // Get all products
@@ -156,6 +199,16 @@ app.get('/api/products/collection/:name', async (req: Request, res: Response) =>
 // Create product (admin only)
 app.post('/api/products', authMiddleware, async (req: Request, res: Response) => {
  try {
+ // Validate variations if provided
+ if (req.body.variations) {
+ const variationValidation = validateVariations(req.body.variations);
+ if (!variationValidation.valid) {
+ return res.status(400).json({ error: variationValidation.error });
+ }
+ // Use normalized variations
+ req.body.variations = variationValidation.data;
+ }
+
  const lastProduct = await Product.findOne().sort({ id: -1 });
  const newId = lastProduct ? lastProduct.id + 1 : 1;
 
@@ -225,6 +278,16 @@ app.post('/api/products', authMiddleware, async (req: Request, res: Response) =>
 // Update product (admin only)
 app.put('/api/products/:id', authMiddleware, async (req: Request, res: Response) => {
  try {
+ // Validate variations if provided
+ if (req.body.variations) {
+ const variationValidation = validateVariations(req.body.variations);
+ if (!variationValidation.valid) {
+ return res.status(400).json({ error: variationValidation.error });
+ }
+ // Use normalized variations
+ req.body.variations = variationValidation.data;
+ }
+
  const product = await Product.findOneAndUpdate(
  { id: parseInt(req.params.id) },
  req.body,
