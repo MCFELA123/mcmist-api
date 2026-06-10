@@ -513,6 +513,13 @@ app.post('/api/types', authMiddleware, async (req: Request, res: Response) => {
  return res.status(400).json({ error: 'At least one variation is required' });
  }
 
+ const cleanedVariations = variations
+ .filter((v: string) => typeof v === 'string' && v.trim())
+ .map((v: string) => v.trim());
+ if (cleanedVariations.length === 0) {
+ return res.status(400).json({ error: 'All variations were empty' });
+ }
+
  const existingType = await Type.findOne({ name: name.trim() });
  if (existingType) {
  return res.status(400).json({ error: 'Type already exists' });
@@ -520,14 +527,15 @@ app.post('/api/types', authMiddleware, async (req: Request, res: Response) => {
 
  const newType = new Type({
  name: name.trim(),
- variations: variations.filter((v: string) => v.trim()).map((v: string) => v.trim()),
+ variations: cleanedVariations,
  variationPrices: variationPrices || {},
  });
 
  await newType.save();
  res.status(201).json(newType);
  } catch (error) {
- res.status(400).json({ error: 'Failed to create type' });
+ console.error('Error creating type:', error);
+ res.status(400).json({ error: error instanceof Error ? error.message : 'Failed to create type' });
  }
 });
 
@@ -537,13 +545,28 @@ app.put('/api/types/:id', authMiddleware, async (req: Request, res: Response) =>
  const { name: newName, variations, variationPrices } = req.body;
  const typeId = req.params.id;
 
+ // Validate input
+ if (!newName || !newName.trim()) {
+ return res.status(400).json({ error: 'Type name is required' });
+ }
+ if (!Array.isArray(variations) || variations.length === 0) {
+ return res.status(400).json({ error: 'At least one variation is required' });
+ }
+
+ const cleanedVariations = variations
+ .filter((v: string) => typeof v === 'string' && v.trim())
+ .map((v: string) => v.trim());
+ if (cleanedVariations.length === 0) {
+ return res.status(400).json({ error: 'All variations were empty' });
+ }
+
  const type = await Type.findById(typeId);
  if (!type) {
  return res.status(404).json({ error: 'Type not found' });
  }
 
  // Check if new name already exists (if changing name)
- if (newName && newName !== type.name) {
+ if (newName.trim() !== type.name) {
  const existingType = await Type.findOne({ name: newName.trim() });
  if (existingType) {
  return res.status(400).json({ error: 'Another type with this name already exists' });
@@ -553,18 +576,17 @@ app.put('/api/types/:id', authMiddleware, async (req: Request, res: Response) =>
  const updatedType = await Type.findByIdAndUpdate(
  typeId,
  {
- name: newName?.trim() || type.name,
- variations: Array.isArray(variations) 
-  ? variations.filter((v: string) => v.trim()).map((v: string) => v.trim())
-  : type.variations,
- variationPrices: variationPrices || type.variationPrices || {},
+ name: newName.trim(),
+ variations: cleanedVariations,
+ variationPrices: variationPrices || {},
  },
  { new: true }
  );
 
  res.json(updatedType);
  } catch (error) {
- res.status(400).json({ error: 'Failed to update type' });
+ console.error('Error updating type:', error);
+ res.status(400).json({ error: error instanceof Error ? error.message : 'Failed to update type' });
  }
 });
 
@@ -573,21 +595,6 @@ app.delete('/api/types/:id', authMiddleware, async (req: Request, res: Response)
  try {
  const typeId = req.params.id;
  const type = await Type.findByIdAndDelete(typeId);
-
- if (!type) {
- return res.status(404).json({ error: 'Type not found' });
- }
-
- res.json(type);
- } catch (error) {
- res.status(400).json({ error: 'Failed to delete type' });
- }
-});
-
-// Delete type (admin only)
-app.delete('/api/types/:name', authMiddleware, async (req: Request, res: Response) => {
- try {
- const type = await Type.findOneAndDelete({ name: req.params.name });
 
  if (!type) {
  return res.status(404).json({ error: 'Type not found' });
