@@ -74,6 +74,7 @@ const typeSchema = new mongoose.Schema(
  {
  name: { type: String, required: true, unique: true },
  variations: { type: [String], required: true, default: [] },
+ variationPrices: { type: Map, of: Number, default: {} },
  },
  { timestamps: true }
 );
@@ -502,7 +503,7 @@ app.get('/api/types/:name', async (req: Request, res: Response) => {
 // Create type (admin only)
 app.post('/api/types', authMiddleware, async (req: Request, res: Response) => {
  try {
- const { name, variations } = req.body;
+ const { name, variations, variationPrices } = req.body;
 
  if (!name || !name.trim()) {
  return res.status(400).json({ error: 'Type name is required' });
@@ -520,6 +521,7 @@ app.post('/api/types', authMiddleware, async (req: Request, res: Response) => {
  const newType = new Type({
  name: name.trim(),
  variations: variations.filter((v: string) => v.trim()).map((v: string) => v.trim()),
+ variationPrices: variationPrices || {},
  });
 
  await newType.save();
@@ -532,7 +534,7 @@ app.post('/api/types', authMiddleware, async (req: Request, res: Response) => {
 // Update type (admin only)
 app.put('/api/types/:name', authMiddleware, async (req: Request, res: Response) => {
  try {
- const { name: newName, variations } = req.body;
+ const { name: newName, variations, variationPrices } = req.body;
  const oldName = req.params.name;
 
  const type = await Type.findOne({ name: oldName });
@@ -555,6 +557,7 @@ app.put('/api/types/:name', authMiddleware, async (req: Request, res: Response) 
  variations: Array.isArray(variations) 
   ? variations.filter((v: string) => v.trim()).map((v: string) => v.trim())
   : type.variations,
+ variationPrices: variationPrices || type.variationPrices || {},
  },
  { new: true }
  );
