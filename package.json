@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "description": "Mist Product Management Backend API",
   "type": "module",
-  "main": "dist/server.js",
+  "main": "server.ts",
   "scripts": {
     "dev": "node --loader ts-node/esm server.ts",
     "build": "tsc",
-    "start": "node dist/server.js",
+    "start": "node server.ts",
     "seed": "node --loader ts-node/esm seed.ts"
   },
   "dependencies": {
