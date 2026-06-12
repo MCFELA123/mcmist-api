@@ -3,7 +3,9 @@ import cors from 'cors';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
-
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+const JWT_SECRET = process.env.JWT_SECRET || 'mist-jwt-secret-2026';
 dotenv.config();
 
 const app = express();
@@ -42,7 +44,7 @@ const productSchema = new mongoose.Schema(
  collection: { type: String, required: true },
  colors: { type: [String], required: true },
  variations: [
-   mongoose.Schema.Types.Mixed // Can be string or { name: string, price?: number }
+ mongoose.Schema.Types.Mixed // Can be string or { name: string, price?: number }
  ],
  accessories: { type: [Number], default: [] },
  stock: { type: Number, default: 0 },
@@ -109,6 +111,13 @@ const orderSchema = new mongoose.Schema(
  },
  { timestamps: true }
 );
+
+const userSchema = new mongoose.Schema({
+ name: { type: String, required: true },
+ email: { type: String, required: true, unique: true, lowercase: true },
+ password: { type: String, required: true },
+}, { timestamps: true });
+const User = mongoose.model('User', userSchema);
 
 const Product = mongoose.model('Product', productSchema);
 const Newsletter = mongoose.model('Newsletter', newsletterSchema);
@@ -972,88 +981,115 @@ app.get('/api/orders/:orderId', async (req: Request, res: Response) => {
 // CREATE new order
 app.post('/api/orders', async (req: Request, res: Response) => {
  try {
-     // Log full incoming body for debugging
-     console.log('📥 Incoming create order request body:', JSON.stringify(req.body));
+ // Log full incoming body for debugging
+ console.log('📥 Incoming create order request body:', JSON.stringify(req.body));
 
-     let {
-         orderId,
-         customerName,
-         customerEmail,
-         customerPhone,
-         items,
-         totalPrice,
-         paymentMethod = 'Thawani',
-     } = req.body as any;
+ let {
+ orderId,
+ customerName,
+ customerEmail,
+ customerPhone,
+ items,
+ totalPrice,
+ paymentMethod = 'Thawani',
+ } = req.body as any;
 
-     // Basic required fields check
-     if (!orderId || !customerName || !customerEmail || !items || totalPrice === undefined) {
-         console.log('❌ Missing required fields:', {
-             orderId: !!orderId,
-             customerName: !!customerName,
-             customerEmail: !!customerEmail,
-             items: !!items,
-             totalPrice: totalPrice !== undefined,
-         });
-         return res.status(400).json({ error: 'Missing required fields' });
-     }
-
-     // Ensure items is an array and coerce numeric fields to numbers to satisfy mongoose schema
-     if (!Array.isArray(items) || items.length === 0) {
-         return res.status(400).json({ error: 'Items must be a non-empty array' });
-     }
-
-     const sanitizedItems = items.map((it: any, idx: number) => {
-         const productId = Number(it.productId);
-         const quantity = Number(it.quantity);
-         const price = Number(it.price);
-         if (Number.isNaN(productId) || Number.isNaN(quantity) || Number.isNaN(price)) {
-             throw new Error(`Invalid numeric field in items[${idx}]`);
-         }
-         return {
-             productId,
-             productName: String(it.productName || ''),
-             quantity,
-             price,
-             selectedVariation: it.selectedVariation || '',
-             selectedColor: it.selectedColor || '',
-         };
-     });
-
-     // Coerce totalPrice to number
-     totalPrice = Number(totalPrice);
-     if (Number.isNaN(totalPrice)) {
-         return res.status(400).json({ error: 'Invalid totalPrice' });
-     }
-
-     const newOrder = new Order({
-         orderId: String(orderId),
-         customerName: String(customerName),
-         customerEmail: String(customerEmail),
-         customerPhone: String(customerPhone || ''),
-         items: sanitizedItems,
-         totalPrice,
-         paymentMethod: String(paymentMethod),
-         paymentStatus: 'pending',
-         deliveryStatus: 'processing',
-     });
-
-     console.log('💾 Saving order to database (sanitized)...');
-     const savedOrder = await newOrder.save();
-     console.log('✅ Order created successfully:', savedOrder._id);
-     res.status(201).json(savedOrder);
- } catch (error) {
-     console.error('❌ Error creating order:', error instanceof Error ? error.message : error);
-     console.error('📍 Full error object:', error);
-
-     // Handle mongoose validation / duplicate key errors with clearer responses
-     // Duplicate key (e.g., orderId unique) has code 11000
-     // If error is an object with 'code' property, return 409
-     if (typeof (error as any)?.code === 'number' && (error as any).code === 11000) {
-         return res.status(409).json({ error: 'Duplicate orderId', details: (error as any).keyValue });
-     }
-
-     res.status(500).json({ error: 'Failed to create order', details: error instanceof Error ? error.message : 'Unknown error' });
+ // Basic required fields check
+ if (!orderId || !customerName || !customerEmail || !items || totalPrice === undefined) {
+ console.log('❌ Missing required fields:', {
+ orderId: !!orderId,
+ customerName: !!customerName,
+ customerEmail: !!customerEmail,
+ items: !!items,
+ totalPrice: totalPrice !== undefined,
+ });
+ return res.status(400).json({ error: 'Missing required fields' });
  }
+
+ // Ensure items is an array and coerce numeric fields to numbers to satisfy mongoose schema
+ if (!Array.isArray(items) || items.length === 0) {
+ return res.status(400).json({ error: 'Items must be a non-empty array' });
+ }
+
+ const sanitizedItems = items.map((it: any, idx: number) => {
+ const productId = Number(it.productId);
+ const quantity = Number(it.quantity);
+ const price = Number(it.price);
+ if (Number.isNaN(productId) || Number.isNaN(quantity) || Number.isNaN(price)) {
+ throw new Error(`Invalid numeric field in items[${idx}]`);
+ }
+ return {
+ productId,
+ productName: String(it.productName || ''),
+ quantity,
+ price,
+ selectedVariation: it.selectedVariation || '',
+ selectedColor: it.selectedColor || '',
+ };
+ });
+
+ // Coerce totalPrice to number
+ totalPrice = Number(totalPrice);
+ if (Number.isNaN(totalPrice)) {
+ return res.status(400).json({ error: 'Invalid totalPrice' });
+ }
+
+ const newOrder = new Order({
+ orderId: String(orderId),
+ customerName: String(customerName),
+ customerEmail: String(customerEmail),
+ customerPhone: String(customerPhone || ''),
+ items: sanitizedItems,
+ totalPrice,
+ paymentMethod: String(paymentMethod),
+ paymentStatus: 'pending',
+ deliveryStatus: 'processing',
+ });
+
+ console.log('💾 Saving order to database (sanitized)...');
+ const savedOrder = await newOrder.save();
+ console.log('✅ Order created successfully:', savedOrder._id);
+ res.status(201).json(savedOrder);
+ } catch (error) {
+ console.error('❌ Error creating order:', error instanceof Error ? error.message : error);
+ console.error('📍 Full error object:', error);
+
+ // Handle mongoose validation / duplicate key errors with clearer responses
+ // Duplicate key (e.g., orderId unique) has code 11000
+ // If error is an object with 'code' property, return 409
+ if (typeof (error as any)?.code === 'number' && (error as any).code === 11000) {
+ return res.status(409).json({ error: 'Duplicate orderId', details: (error as any).keyValue });
+ }
+
+ res.status(500).json({ error: 'Failed to create order', details: error instanceof Error ? error.message : 'Unknown error' });
+ }
+});
+
+app.post('/api/auth/register', async (req, res) => {
+ try {
+ const { name, email, password } = req.body;
+ if (!name || !email || !password) return res.status(400).json({ error: 'All fields required' });
+ if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+ const existing = await User.findOne({ email: email.toLowerCase() });
+ if (existing) return res.status(409).json({ error: 'Email already registered' });
+ const hashed = await bcrypt.hash(password, 10);
+ const user = await new User({ name, email, password: hashed }).save();
+ const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
+ res.status(201).json({ token, user: { _id: user._id, name: user.name, email: user.email } });
+ } catch (e) { res.status(500).json({ error: 'Registration failed' }); }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+ try {
+ const { email, password } = req.body;
+ if (!email || !password) return res.status(400).json({ error: 'All fields required' });
+ const user = await User.findOne({ email: email.toLowerCase() });
+ if (!user) return res.status(401).json({ error: 'Invalid email or password' });
+ const valid = await bcrypt.compare(password, user.password);
+ if (!valid) return res.status(401).json({ error: 'Invalid email or password' });
+ const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
+ res.json({ token, user: { _id: user._id, name: user.name, email: user.email } });
+ } catch (e) { res.status(500).json({ error: 'Login failed' }); }
 });
 
 // UPDATE order status - Customer can update own order (public endpoint for payment confirmation)
